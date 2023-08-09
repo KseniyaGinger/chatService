@@ -28,9 +28,9 @@ object ChatService {
         val chat = chats[userId] ?: throw NoChatException()
         // return chat.messages.filter { !it.deleted }.takeLast(count).onEach { it.red = true }
                 return chat.messages
-            //.asSequence()
+            .asSequence()
             .filter(::isNotDeleted)
-            .takeLast(count)
+            .take(count)
             .onEach(::markAsRed)
             .toList()
     }
