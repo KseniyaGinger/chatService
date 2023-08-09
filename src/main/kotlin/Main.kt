@@ -6,26 +6,48 @@ object ChatService {
 
     private val chats: MutableMap<Int, Chat> = mutableMapOf()
     private val messages: MutableMap<Int, Message> = mutableMapOf()
-    fun sendMessage(userId: Int, message: Message) {
-        chats.getOrPut(userId) { Chat() }.messages += message.copy()
+
+  fun sendMessage(userId: Int, message: Message) {
+        // chats.getOrPut(userId) { Chat() }.messages += message.copy()
+        chats.getOrPut(userId, ::Chat).messages += message.copy()
     }
 
-    fun lastMessages() = chats.values.map { chat -> chat.messages.lastOrNull { !it.deleted }?.text ?: "No messages" }
+
+    /* fun lastMessages() = chats.values.map { chat -> chat.messages
+    .lastOrNull { !it.deleted }?.text ?: "No messages" } */
+
+    fun lastMessages(): List<String> {
+        return chats.values
+            .asSequence()
+            .map(::getLastMessageText)
+            .ifEmpty{throw NoChatException()}
+            .toList()
+    }
+
     fun getMessage(userId: Int, count: Int): List<Message> {
         val chat = chats[userId] ?: throw NoChatException()
-        return chat.messages.filter { !it.deleted }.takeLast(count).onEach { it.red = true }
+        // return chat.messages.filter { !it.deleted }.takeLast(count).onEach { it.red = true }
+                return chat.messages
+            //.asSequence()
+            .filter(::isNotDeleted)
+            .takeLast(count)
+            .onEach(::markAsRed)
+            .toList()
     }
+
 
     fun deleteMessage(messageId: Int, userId: Int) {
         val chat = chats[userId] ?: throw NoChatException()
         val message = chat.messages.getOrNull(messageId)
-        message?.let { it.deleted = true }
+        //message?.let { it.deleted = true }
+        message?.let(::markAsDeleted)
     }
+
 
     fun getUnreadChatsCount() =
         chats.values.map { chat -> chat.messages.filter { !it.deleted && !it.red } }.count { it.isNotEmpty() }
 
-    fun getChats() = this.chats
+    fun getChats() = chats
 
     fun deleteChat(userId: Int) {
         val chat = chats[userId] ?: throw NoChatException()
@@ -33,6 +55,28 @@ object ChatService {
     }
 
     fun printChats() = println(chats)
+
+
+
+    // добавляю вспомогательные функции, чтобы ссылаться на них вместо написания лямбды
+    fun isNotDeleted(message: Message): Boolean {
+        return !message.deleted
+    }
+    fun markAsRed(message: Message) {
+        message.red = true
+    }
+    fun markAsDeleted(message: Message) {
+        message.deleted = true
+    }
+    fun isNotRed(message: Message): Boolean {
+        return !message.red
+    }
+    fun getLastMessageText(chat: Chat): String {
+        return chat.messages
+            .asSequence()
+            .lastOrNull(::isNotDeleted)
+            ?.text ?: "No messages"
+    }
 
 }
 
